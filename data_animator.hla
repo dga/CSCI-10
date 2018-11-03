@@ -1,0 +1,1015 @@
+/*
+ * data_animator.hla
+ *
+ * written by			Daniel G. Arnold
+ *
+ * This program animates various algorithms that
+ * demonstrate how numbering systems used by the
+ * computer work. It also demonstrates how the
+ * computer performs arithmetic and logic.
+ *
+ */
+
+program data_animator;
+
+    #include("stdlib.hhf")
+    
+static
+
+    display_mode    :uns8   :=  0;
+
+procedure get_uns32(val prompt:string); @returns("eax"); @forward;
+procedure get_int32(val prompt:string); @returns("eax"); @forward;
+procedure get_char; @returns("al"); @forward;
+procedure get_bin(val prompt:string); @returns("eax"); @forward;
+procedure get_hex(val prompt:string); @returns("eax"); @forward;
+procedure hex_dec_to_char(val num:uns8); @returns("dl"); @forward;
+procedure hex_char_to_dec(val num:char); @returns("dl"); @forward;
+procedure print_reg_binary(val reg:dword); @forward;
+procedure main_menu; @forward;
+procedure process_choice; @forward;
+procedure dec_to_bin_powers; @forward;
+procedure dec_to_bin_div; @forward;
+procedure dec_to_hex_powers; @forward;
+procedure bin_to_dec; @forward;
+procedure hex_to_dec; @forward;
+procedure bin_to_hex; @forward;
+procedure uns_to_twos_comp; @forward;
+procedure uns_bin_add; @forward;
+procedure twos_comp_bin_add; @forward;
+procedure bitwise_logic; @forward;
+
+procedure get_uns32(val prompt:string);
+begin get_uns32;
+
+    forever
+        try
+            stdout.put(prompt);
+            stdin.flushInput();
+            stdin.getu32();
+        unprotected
+            break;
+        anyexception
+            stdout.put("Error: Invalid input", nl);
+        endtry;
+    endfor;
+
+end get_uns32;
+
+procedure get_int32(val prompt:string);
+begin get_int32;
+
+    forever
+        try
+            stdout.put(prompt);
+            stdin.flushInput();
+            stdin.geti32();
+        unprotected
+            break;
+        anyexception
+            stdout.put("Error: Invalid input", nl);
+        endtry;
+    endfor;
+
+end get_int32;
+
+procedure get_char;
+begin get_char;
+
+    forever
+        try
+            stdout.put("> ");
+            stdin.flushInput();
+            stdin.getc();
+        unprotected
+            break;
+        exception(ex.IllegalChar)
+            stdout.put("Error: You entered an illegal character.", nl);
+        anyexception
+            stdout.put("Error: Invalid input", nl);
+        endtry;
+    endfor;
+    
+end get_char;
+
+procedure get_bin(val prompt:string);
+var
+    good_input  :   boolean;
+begin get_bin;
+
+    repeat
+        mov(true, good_input);
+        
+        try
+            stdout.put(prompt);
+            stdin.flushInput();
+            stdin.a_gets();
+        unprotected
+        anyexception
+            stdout.put("Error: Invalid input", nl);
+        endtry;
+        
+
+            for (mov(0, ecx); ecx < [eax - 4]; inc(ecx)) do
+                if ((type char [eax + ecx]) != '1' && (type char [eax + ecx]) != '0') then
+                    mov(false, good_input);
+                    stdout.put("Error: You did not enter a binary value.", nl);
+                    strfree(eax);            
+                    break;
+                endif;
+            endfor;
+            
+            if (good_input) then
+                if ((type dword [eax - 4]) > 32) then
+                    mov(false, good_input);
+                    stdout.put("Error: You must enter a binary value that contains 32 bits or less.", nl);
+                endif;
+            endif;
+       
+    until (good_input);
+    
+end get_bin;
+
+procedure get_hex(val prompt:string);
+var
+    good_input  :   boolean;
+begin get_hex;
+
+    repeat
+        mov(true, good_input);
+        
+        try
+            stdout.put(prompt);
+            stdin.flushInput();
+            stdin.a_gets();
+            mov(eax, ebx);
+        unprotected
+        anyexception
+            stdout.put("Error: Invalid input", nl);
+        endtry;
+        
+        for (mov(0, ecx); ecx < [ebx - 4]; inc(ecx)) do
+            if (!chars.isXDigit([ebx + ecx])) then
+                mov(false, good_input);
+                stdout.put("Error: You did not enter a hexadecimal value.", nl);
+                strfree(ebx);
+                break;
+            endif;
+        endfor;
+        
+        if (good_input) then
+            if ((type dword [ebx - 4]) > 8) then
+                mov(false, good_input);
+                stdout.put("Error: You must enter a hexadecimal value that contains 8 nibbles or less.", nl);
+            endif;
+        endif;
+        
+    until (good_input);
+
+end get_hex;
+
+procedure hex_dec_to_char(val num:uns8);
+begin hex_dec_to_char;
+
+    if (num == 0) then
+        mov('0', dl);
+    elseif (num == 1) then
+        mov('1', dl);
+    elseif (num == 2) then
+        mov('2', dl);
+    elseif (num == 3) then
+        mov('3', dl);
+    elseif (num == 4) then
+        mov('4', dl);
+    elseif (num == 5) then
+        mov('5', dl);
+    elseif (num == 6) then
+        mov('6', dl);
+    elseif (num == 7) then
+        mov('7', dl);
+    elseif (num == 8) then
+        mov('8', dl);
+    elseif (num == 9) then
+        mov('9', dl);
+    elseif (num == 10) then
+        mov('A', dl);
+    elseif (num == 11) then
+        mov('B', dl);
+    elseif (num == 12) then
+        mov('C', dl);
+    elseif (num == 13) then
+        mov('D', dl);
+    elseif (num == 14) then
+        mov('E', dl);
+    elseif (num == 15) then
+        mov('F', dl);
+    endif;
+
+end hex_dec_to_char;
+
+procedure hex_char_to_dec(val num:char);
+begin hex_char_to_dec;
+
+    if (num == '0') then
+        mov(0, dl);
+    elseif (num == '1') then
+        mov(1, dl);
+    elseif (num == '2') then
+        mov(2, dl);
+    elseif (num == '3') then
+        mov(3, dl);
+    elseif (num == '4') then
+        mov(4, dl);
+    elseif (num == '5') then
+        mov(5, dl);
+    elseif (num == '6') then
+        mov(6, dl);
+    elseif (num == '7') then
+        mov(7, dl);
+    elseif (num == '8') then
+        mov(8, dl);
+    elseif (num == '9') then
+        mov(9, dl);
+    elseif (chars.toUpper(num) == 'A') then
+        mov(10, dl);
+    elseif (chars.toUpper(num) == 'B') then
+        mov(11, dl);
+    elseif (chars.toUpper(num) == 'C') then
+        mov(12, dl);
+    elseif (chars.toUpper(num) == 'D') then
+        mov(13, dl);
+    elseif (chars.toUpper(num) == 'E') then
+        mov(14, dl);
+    elseif (chars.toUpper(num) == 'F') then
+        mov(15, dl);
+    endif;
+
+end hex_char_to_dec;
+
+procedure print_reg_binary(val reg:dword);
+begin print_reg_binary;
+
+    for (mov(0, cl); cl < 32; inc(cl)) do
+        rol(1, reg);
+        
+        if (@c) then
+            stdout.put('1');
+        else
+            stdout.put('0');
+        endif;
+    endfor;
+    
+end print_reg_binary;
+
+procedure main_menu;
+begin main_menu;
+
+    stdout.put
+    (
+        nl,
+        "Data Animator", nl,
+        nl,
+        "  (a) -- Bitwise logic", nl,
+        "  (b) -- Base-10 -> Base-2 (Powers of 2)", nl,
+        "  (c) -- Base-10 -> Base-2 (Divide by 2)", nl,
+        "  (d) -- Base-10 -> Base-16 (Powers of 16)", nl,
+        "  (e) -- Base-2 -> Base-10", nl,
+        "  (f) -- Base-2 -> Base-16", nl,
+        "  (g) -- Base-16 -> Base-10", nl,
+        "  (h) -- Unsigned -> 2's complement", nl,
+        "  (i) -- Unsigned binary +", nl,
+        "  (j) -- 2's complement binary +", nl,
+        "  (k) -- Toggle register display mode", nl,
+        nl,
+        "  'Q' to quit", nl, nl
+    );
+    
+    stdout.put("Current view mode: ");
+    
+    if (display_mode == 0) then
+        stdout.put
+        (
+            "hexadecimal (base-16)", nl,
+            "EAX[ 0x", eax, " ]  ",
+            "EBX[ 0x", ebx, " ]  ",
+            "ECX[ 0x", ecx, " ]  ",
+            "EDX[ 0x", edx, " ]", nl, nl
+        );
+    elseif (display_mode == 1) then
+        stdout.put
+        (
+            "decimal (base-10)", nl,
+            "EAX[ ", (type uns32 eax), " ]  ",
+            "EBX[ ", (type uns32 ebx), " ]  ",
+            "ECX[ ", (type uns32 ecx), " ]  ",
+            "EDX[ ", (type uns32 edx), " ]", nl, nl
+        );
+    elseif (display_mode == 2) then
+        stdout.put
+        (
+            "binary (base-2)", nl,
+            "EAX["
+        );
+        
+        print_reg_binary(eax);
+        
+        stdout.put
+        (
+            "]  EBX["
+        );
+        
+        print_reg_binary(ebx);
+        
+        stdout.put
+        (
+            "]", nl,
+            "ECX["
+        );
+        
+        print_reg_binary(ecx);
+        
+        stdout.put
+        (
+            "]  EDX["
+        );
+        
+        print_reg_binary(edx);
+        
+        stdout.put("]", nl, nl);
+    else
+        stdout.put("Error: Invalid display mode", nl);
+    endif;
+
+end main_menu;
+
+procedure process_choice;
+begin process_choice;
+
+    if (chars.toUpper(al) == 'A') then
+        bitwise_logic();
+    elseif (chars.toUpper(al) == 'B') then
+        dec_to_bin_powers();
+    elseif (chars.toUpper(al) == 'C') then
+        dec_to_bin_div();
+    elseif (chars.toUpper(al) == 'D') then
+        dec_to_hex_powers();
+    elseif (chars.toUpper(al) == 'E') then
+        bin_to_dec();
+    elseif (chars.toUpper(al) == 'F') then
+        bin_to_hex();
+    elseif (chars.toUpper(al) == 'G') then
+        hex_to_dec();
+    elseif (chars.toUpper(al) == 'H') then
+        uns_to_twos_comp();
+    elseif (chars.toUpper(al) == 'I') then
+        uns_bin_add();
+    elseif (chars.toUpper(al) == 'J') then
+        twos_comp_bin_add();
+    elseif (chars.toUpper(al) == 'K') then
+        if (display_mode == 2) then
+            mov(0, display_mode);
+        else
+            inc(display_mode);
+        endif;
+    endif;
+
+end process_choice;
+
+procedure dec_to_bin_powers;
+var
+    output: string;
+    blah:   boolean;
+    
+begin dec_to_bin_powers;
+
+    mov(false, blah);
+
+    stralloc(32);
+    mov(eax, output);
+    
+    get_uns32("Please enter a number [0-4294967295]: ");
+    
+    mov(2147483648, edx);
+    
+    for (mov(31, cl); (type int8 cl) >= 0; dec(cl)) do
+        if (eax >= edx) then
+            str.cat("1", output);
+            stdout.put("Setting 2^", (type uns8 cl), " bit(", (type uns32 edx), ')', nl);
+            sub(edx, eax);
+            mov(true, blah);
+        else
+            str.cat("0", output);
+            
+            if (blah) then
+                stdout.put("Not setting 2^", (type uns8 cl), " bit(", (type uns32 edx), ')', nl);
+            endif;
+        endif;
+        
+        shr(1, edx);
+    endfor;
+    
+    stdout.put(nl, "Result: ", output, nl);
+    strfree(output);
+    
+    stdout.put(nl, "Press enter to continue...");
+    stdin.readLn();
+
+end dec_to_bin_powers;
+
+procedure dec_to_bin_div;
+var
+    output: string;
+    number: uns32;
+begin dec_to_bin_div;
+
+    stralloc(32);
+    mov(eax, output);
+    
+    get_uns32("Please enter a number [0-4294967295]: ");
+    mov(eax, number);
+    
+    stdout.newln();
+    
+    while (eax > 0) do
+        stdout.put((type uns32 eax), " / 2 = ");
+        mov(0, edx);
+        div(2, edx:eax);
+        stdout.put((type uns32 eax), " rem ", (type uns32 edx), nl);
+        
+        if (edx == 0) then
+            str.insert("0", output, 0);
+        else
+            str.insert("1", output, 0);
+        endif;
+        
+    endwhile;
+    
+    stdout.put(nl, "Result: ", output, nl);
+    
+    strfree(output);
+    
+    stdout.put(nl, "Press enter to continue...");
+    stdin.readLn();
+
+end dec_to_bin_div;
+
+procedure dec_to_hex_powers;
+var
+    num     :   uns32;
+    output  :   string;
+begin dec_to_hex_powers;
+
+    stralloc(10);
+    mov(eax, output);
+    str.cat("0x", output);
+
+    //mov($1000_0000, ebx);
+    
+    get_uns32("Please enter a number [0-4294967295]: ");
+    mov($1000_0000, ebx);
+    mov(eax, num);
+    
+    for (mov(7, cl); (type int8 cl) >= 0; dec(cl)) do
+        if (num >= ebx) then
+            stdout.put("Setting the 16^", (type uns8 cl), " bit", '(', (type uns32 ebx), ") ");
+            mov(num, eax);
+            mov(0, edx);
+            div(ebx, edx:eax);
+            stdout.put((type uns8 al), " times", nl);
+            str.catc(output, hex_dec_to_char(al));
+            stdout.put("  ", (type uns8 al), " base-10 = '", (type char dl), "' base-16", nl);
+            mul(ebx, eax);
+            sub(eax, num);
+        else
+            str.catc(output, '0');
+        endif;
+        
+        
+            shr(4, ebx);
+    endfor;
+    
+    stdout.put(output, nl);
+    strfree(output);
+    
+    stdin.readLn();
+
+end dec_to_hex_powers;
+
+procedure bin_to_dec;
+var
+    sum     :   uns32;
+begin bin_to_dec;
+
+    get_bin("Enter a binary value: ");
+    mov(0, sum);
+    mov(1, edx);
+    mov(0, bl);
+    
+    
+    for (mov([eax - 4], cl); cl > 0; dec(cl)) do
+        if ((type char [eax + ecx - 1]) == '1') then
+            stdout.put("1  2^", (type uns8 bl), "  ", (type uns32 edx), nl);
+            add(edx, sum);
+        else
+            stdout.put("0  2^", (type uns8 bl), nl);
+        endif;
+        
+        shl(1, edx);
+        inc(bl);
+        endfor;
+
+    stdout.put("Sum: ", sum, nl);
+    stdin.readLn();
+    strfree(eax);
+
+end bin_to_dec;
+
+procedure hex_to_dec;
+var
+    sum :   uns32;
+begin hex_to_dec;
+
+    get_hex("Enter a hexadecimal value: ");
+    
+    mov(0, sum);
+    mov(0, edx);
+    mov(1, edi);
+    
+    for (mov(0, ecx); ecx < [ebx - 4]; inc(ecx)) do
+        hex_char_to_dec([ebx + ecx]);
+        mov(edx, eax);
+        mul(edi, eax);
+        add(eax, sum);
+        shl(4, edi);
+    endfor;
+    
+    stdout.put(sum, nl);
+    strfree(ebx);
+    
+    stdin.readLn();
+
+end hex_to_dec;
+
+procedure bin_to_hex; /* THIS IS BROKEN */
+var
+    output  :   string;
+    sum     :   uns32;
+    count   :   uns8;
+    temp    :   uns32;
+    
+begin bin_to_hex;
+    
+    forever
+        get_bin("Enter a binary value in nibbles (quantity of bits must be a multiple of 4): ");
+    
+        mov(eax, ebx);
+        mov([ebx - 4], eax);
+        mov(0, edx);
+        div(4, edx:eax);
+        mov(eax, ecx);
+    
+        if (edx == 0) then
+            break;
+        endif;
+    
+    endfor;
+    
+    stralloc(ecx);
+    mov(eax, output);
+    
+    mov(8, edi);
+    mov(0, sum);
+    mov(0, count);
+    
+    for (mov(0, ecx); ecx < [ebx - 4]; inc(ecx)) do
+        if ((type char [ebx + ecx]) == '1') then
+            add(edi, sum);
+        endif;
+        
+        str.length(ebx);
+        dec(eax);
+        
+        if (count == 4) then
+            mov((type uns8 sum), dl);
+            str.catc(output, hex_dec_to_char(dl));
+            mov(8, edi);
+            mov(0, sum);
+            mov(0, count);
+        elseif (count == 3 && ecx == eax && eax > 2) then
+            if (sum < 15) then
+                add(edi, sum);
+            endif;
+            mov((type uns8 sum), dl);
+            str.catc(output, hex_dec_to_char(dl));
+        else
+            shr(1, edi);
+        endif;
+        
+        inc(count);
+    
+    endfor;
+    
+    stdout.put("0x", output, nl);
+    stdin.readLn();
+    
+    strfree(output);
+    strfree(ebx);
+
+end bin_to_hex;
+
+procedure uns_to_twos_comp;
+begin uns_to_twos_comp;
+
+    get_uns32("Please enter a number [0-4294967295]: ");
+    
+    print_reg_binary(eax);
+    stdout.newln();
+    stdout.put("NOT ");
+    not(eax);
+    stdout.put("+ 1 ");
+    inc(eax);
+    print_reg_binary(eax);
+    stdout.newln();
+    stdout.put((type int32 eax), nl);
+    stdin.readLn();
+
+end uns_to_twos_comp;
+
+procedure uns_bin_add;
+var
+    bin_input_one   :   string;
+    bin_input_two   :   string;
+    sum_one         :   uns32;
+    sum_two         :   uns32;
+begin uns_bin_add;
+
+   
+    get_bin("Please enter a binary value: ");
+    mov(eax, bin_input_one);
+    
+    get_bin("Please enter another binary value: ");
+    mov(eax, bin_input_two);
+    
+    mov(1, ebx);
+    mov(0, edx);
+    
+    mov(bin_input_one, eax);
+    
+    for (mov([eax - 4], ecx); ecx > 0; dec(ecx)) do
+        if ((type char [eax + ecx - 1]) == '1') then
+            add(ebx, edx);
+        endif;
+        
+        shl(1, ebx);
+    endfor;
+    
+    mov(edx, sum_one);
+    
+    mov(1, ebx);
+    mov(0, edx);
+    
+    mov(bin_input_two, eax);
+    
+    for (mov([eax - 4], ecx); ecx > 0; dec(ecx)) do
+        if ((type char [eax + ecx - 1]) == '1') then
+            add(ebx, edx);
+        endif;
+        
+        shl(1, ebx);
+    endfor;
+    
+    mov(edx, sum_two);
+    
+    mov(sum_one, eax);
+    mov(sum_two, ebx);
+    add(ebx, eax);
+    
+    if (@c) then
+        stdout.put(nl, "OVERFLOW HAS OCCURRED.", nl, nl);
+    endif;
+    
+    print_reg_binary(sum_one);
+    stdout.put(" +");
+    stdout.newln();
+    print_reg_binary(sum_two);
+    stdout.newln();
+    print_reg_binary(eax);
+    stdin.readLn();
+    
+end uns_bin_add;
+
+procedure twos_comp_bin_add;
+begin twos_comp_bin_add;
+
+    get_int32("First operand: ");
+    mov(eax, ebx);
+    get_int32("Second operand: ");
+    
+    print_reg_binary(ebx);
+    stdout.put(" +", nl);
+    print_reg_binary(eax);
+    
+    try
+        add(ebx, eax);
+        into();
+    unprotected
+    anyexception
+        stdout.put(nl, "OVERFLOW HAS OCCURRED.", nl, nl);
+    endtry;
+    
+    stdout.newln();
+    print_reg_binary(eax);
+    stdin.readLn();
+
+end twos_comp_bin_add;
+
+procedure bitwise_logic;
+var
+    mode            :   char;
+    operation       :   char;
+    first_operand   :   string;
+    second_operand  :   string;
+    good_input      :   boolean;
+    sum             :   uns32;
+begin bitwise_logic;
+
+    mov('0', mode);
+    mov(false, good_input);
+
+    repeat
+
+        stdout.put
+        (
+            nl,
+            "Mode", nl,
+            "----", nl,
+            "(1) Binary", nl,
+            "(2) Decimal", nl,
+            "(3) Hexadecimal", nl, nl,
+            "'M' to return to main menu", nl, nl
+        );
+    
+        get_char();
+        
+        if (al != '1' && al != '2' && al != '3' && chars.toUpper(al) != 'M') then
+            mov(false, good_input);
+            stdout.put("Please choose one of the menu choices.");
+            stdin.readLn();
+        else
+            mov(true, good_input);
+            mov(al, mode);
+        endif;
+        
+    until (good_input);
+    
+    if (mode == '1' || mode == '2' || mode == '3') then
+    
+        mov(false, good_input);
+    
+        repeat
+    
+            stdout.put
+            (
+                nl,
+                "Operation", nl,
+                "---------", nl,
+                "(1) NOT", nl,
+                "(2) AND", nl,
+                "(3) OR", nl,
+                "(4) XOR", nl, nl,
+                "'M' to return to main menu", nl, nl
+            );
+    
+            get_char();
+        
+            if (al != '1' && al != '2' && al != '3' && al != '4' && chars.toUpper(al) != 'M') then
+                mov(false, good_input);
+                stdout.put("Please choose one of the menu choices.");
+                stdin.readLn();
+            else
+                mov(true, good_input);
+                mov(al, operation);
+            endif;
+            
+        until (good_input);
+        
+        if (operation != '1' && operation != 'M') then
+            if (mode == '1') then
+                get_bin("First operand: ");
+                mov(eax, first_operand);
+                get_bin("Second operand: ");
+                mov(eax, second_operand);
+            elseif (mode == '2') then
+                get_int32("First operand: ");
+                mov(eax, ebx);
+                get_int32("Second operand: ");
+            elseif (mode == '3') then
+                stdout.put("First operand: ");
+                stdin.getd();
+                mov(eax, ebx);
+                stdout.put("Second operand: ");
+                stdin.getd();
+            endif;
+        elseif (operation == '1') then
+            if (mode == '1') then
+                get_bin("First operand: ");
+                mov(eax, first_operand);
+            elseif (mode == '2') then
+                get_int32("First operand: ");
+            elseif (mode == '3') then
+                stdout.put("First operand: ");
+                stdin.getd();
+            endif;
+        endif;
+            
+        
+        if (operation == '1' || operation == '2' || operation == '3' || operation == '4') then
+        
+            if (operation == '1') then
+                if (mode == '1') then
+                    mov(0, sum);
+                    mov(1, edx);
+                    stdout.put("NOT ", first_operand, nl);
+                
+                    mov(first_operand, eax);
+                
+                    for (mov([eax - 4], ecx); ecx > 0; dec(ecx)) do
+                        if ((type char [eax + ecx - 1]) == '1') then
+                            add(edx, sum);
+                        endif;
+                    
+                        shl(1, edx);
+                    endfor;
+                    
+                    not(sum);
+                    
+                    print_reg_binary(sum);
+                elseif (mode == '2') then
+                    stdout.put("NOT ", (type int32 eax), nl);
+                    not(eax);
+                    stdout.put((type int32 eax), nl);
+                elseif (mode == '3') then
+                    stdout.put("NOT 0x", (type dword eax), nl);
+                    not(eax);
+                    stdout.put("0x", (type dword eax), nl);
+                endif;
+                
+            elseif (operation == '2') then
+                if (mode == '1') then
+                    mov(0, sum);
+                    mov(1, ebx);
+                    stdout.put(first_operand, " AND ", nl, second_operand, nl);
+                
+                    mov(first_operand, eax);
+                
+                    for (mov([eax - 4], ecx); ecx > 0; dec(ecx)) do
+                        if ((type char [eax + ecx - 1]) == '1') then
+                            add(ebx, sum);
+                        endif;
+                    
+                        shl(1, ebx);
+                    endfor;
+                    
+                    mov(sum, ebx);
+                    
+                    mov(0, sum);
+                    mov(1, edx);
+                    
+                    mov(second_operand, eax);
+                
+                    for (mov([eax - 4], ecx); ecx > 0; dec(ecx)) do
+                        if ((type char [eax + ecx - 1]) == '1') then
+                            add(edx, sum);
+                        endif;
+                    
+                        shl(1, edx);
+                    endfor;
+                    
+                    mov(sum, edx);
+                    
+                    and(ebx, edx);
+                    
+                    print_reg_binary(edx);
+                    
+                elseif (mode == '2') then
+                    stdout.put((type int32 ebx), " AND", nl, (type int32 eax), nl);
+                    and(ebx, eax);
+                    stdout.put((type int32 eax), nl);
+               elseif (mode == '3') then
+                    stdout.put("0x", (type dword ebx), " AND", nl, (type dword eax), nl);
+                    and(ebx, eax);
+                    stdout.put("0x", (type dword eax), nl);
+               endif;
+                    
+            elseif (operation == '3') then
+                if (mode == '1') then
+                    mov(0, sum);
+                    mov(1, ebx);
+                    stdout.put(first_operand, " OR ", nl, second_operand, nl);
+                
+                    mov(first_operand, eax);
+                
+                    for (mov([eax - 4], ecx); ecx > 0; dec(ecx)) do
+                        if ((type char [eax + ecx - 1]) == '1') then
+                            add(ebx, sum);
+                        endif;
+                    
+                        shl(1, ebx);
+                    endfor;
+                    
+                    mov(sum, ebx);
+                    
+                    mov(0, sum);
+                    mov(1, edx);
+                    
+                    mov(second_operand, eax);
+                
+                    for (mov([eax - 4], ecx); ecx > 0; dec(ecx)) do
+                        if ((type char [eax + ecx - 1]) == '1') then
+                            add(edx, sum);
+                        endif;
+                    
+                        shl(1, edx);
+                    endfor;
+                    
+                    mov(sum, edx);
+                    
+                    or(ebx, edx);
+                    
+                    print_reg_binary(edx);
+                elseif (mode == '2') then
+                    stdout.put((type int32 ebx), " OR", nl, (type int32 eax), nl);
+                    or(ebx, eax);
+                    stdout.put((type int32 eax), nl);
+                elseif (mode == '3') then
+                    stdout.put("0x", (type dword ebx), " OR", nl, (type dword eax), nl);
+                    or(ebx, eax);
+                    stdout.put("0x", (type dword eax), nl);
+                endif;
+                    
+            elseif (operation == '4') then
+                if (mode == '1') then
+                    mov(0, sum);
+                    mov(1, ebx);
+                    stdout.put(first_operand, " AND ", nl, second_operand, nl);
+                
+                    mov(first_operand, eax);
+                
+                    for (mov([eax - 4], ecx); ecx > 0; dec(ecx)) do
+                        if ((type char [eax + ecx - 1]) == '1') then
+                            add(ebx, sum);
+                        endif;
+                    
+                        shl(1, ebx);
+                    endfor;
+                    
+                    mov(sum, ebx);
+                    
+                    mov(0, sum);
+                    mov(1, edx);
+                    
+                    mov(second_operand, eax);
+                
+                    for (mov([eax - 4], ecx); ecx > 0; dec(ecx)) do
+                        if ((type char [eax + ecx - 1]) == '1') then
+                            add(edx, sum);
+                        endif;
+                    
+                        shl(1, edx);
+                    endfor;
+                    
+                    mov(sum, edx);
+                    
+                    xor(ebx, edx);
+                    
+                    print_reg_binary(edx);
+                elseif (mode == '2') then
+                    stdout.put((type int32 ebx), " XOR", nl, (type int32 eax), nl);
+                    xor(ebx, eax);
+                    stdout.put((type int32 eax), nl);
+                elseif (mode == '3') then
+                    stdout.put("0x", (type dword ebx), " XOR", nl, (type dword eax), nl);
+                    xor(ebx, eax);
+                    stdout.put("0x", (type dword eax), nl);
+                endif;
+            endif;
+        endif;
+    endif;
+    
+    if (chars.toUpper(mode) != 'M' && chars.toUpper(operation) != 'M') then
+        stdin.readLn();
+    endif;
+
+end bitwise_logic;
+
+begin data_animator;
+
+    repeat
+    
+        main_menu();
+        get_char();
+        process_choice();
+        
+    until (al == 'q' || al == 'Q');
+
+end data_animator;

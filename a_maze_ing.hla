@@ -1,0 +1,361 @@
+/*
+ * a_maze_ing.hla
+ *
+ * Written By:			Daniel G. Arnold
+ *
+ * This program is a simple "game" that allows the user to maneuver
+ * a maze-like map and pick up cash. Almost everything is allocated
+ * dynamically and almost all of the decisions are written in pure
+ * assembly.
+ *
+ */
+
+program lab_05;
+
+    #include("stdlib.hhf")
+    
+type
+    room : record
+        id          :   uns8;
+        data        :   uns8;
+        north       :   pointer to room;
+        east        :   pointer to room;
+        south       :   pointer to room;
+        west        :   pointer to room;
+    endrecord;
+
+    player : record
+        id          :   string;
+        data        :   uns8;
+    endrecord;
+    
+    p_room          :   pointer to room;
+
+static
+    room_array      :   p_room[25];
+    player_one      :   player;
+    
+procedure allocate_rooms; @forward;
+procedure clean_up; @forward;
+procedure link_room(val index:uns32; val north:p_room; val east:p_room; val south:p_room; val west:p_room); @forward;
+procedure link_map; @forward;
+procedure user_interface; @forward;
+procedure show_map; @forward;
+
+procedure allocate_rooms;
+begin allocate_rooms;
+
+    push(eax);
+    push(ebx);
+    push(ecx);
+    
+    mov(0, ecx);
+    
+    _allocate_rooms:
+    cmp(ecx, 25);
+    jnl _end_allocate_rooms;
+
+        malloc(@size(room));
+        mov(eax, ebx);
+        
+        mov(cl, (type room [ebx]).id);
+        
+        rand.urange(1, 10);
+        mov((type uns8 al), (type room [ebx]).data);
+        
+        mov(ebx, room_array[ecx * 4]);
+        
+        inc(ecx);
+        jmp _allocate_rooms;
+        
+    _end_allocate_rooms:
+    
+    pop(ecx);
+    pop(ebx);
+    pop(eax);
+    
+end allocate_rooms;
+
+procedure clean_up;
+begin clean_up;
+
+    push(ecx);
+    
+    mov(0, ecx);
+    
+    _clean_up:
+    cmp(ecx, 25);
+    jnl _end_clean_up;
+
+        free(room_array[ecx * 4]);
+        
+        inc(ecx);
+        jmp _clean_up;
+        
+    _end_clean_up:
+    
+    strfree(player_one.id);
+    
+    pop(ecx);
+    
+end clean_up;
+
+procedure link_room(val index:uns32; val north:p_room; val east:p_room; val south:p_room; val west:p_room);
+begin link_room;
+
+    push(ecx);
+    push(esi);
+    
+    mov(index, ecx);
+    mov(room_array[ecx * 4], esi);
+    
+    mov(north, (type room [esi]).north);
+    mov(east, (type room [esi]).east);
+    mov(south, (type room [esi]).south);
+    mov(west, (type room [esi]).west);
+    
+    pop(esi);
+    pop(ecx);
+    
+end link_room;
+
+procedure link_map;
+begin link_map;
+
+    link_room(0, NULL, NULL, room_array[1 * 4], NULL);
+    link_room(1, room_array[0 * 4], room_array[2 * 4], NULL, NULL);
+    link_room(2, NULL, NULL, room_array[3 * 4], room_array[1 * 4]);
+    link_room(3, room_array[2 * 4], room_array[4 * 4], NULL, room_array[5 * 4]);
+    link_room(4, NULL, NULL, NULL, room_array[3 * 4]);
+    link_room(5, NULL, room_array[3 * 4], NULL, room_array[6 * 4]);
+    link_room(6, NULL, room_array[5 * 4], room_array[7 * 4], NULL);
+    link_room(7, room_array[6 * 4], NULL, NULL, room_array[8 * 4]);
+    link_room(8, NULL, room_array[7 * 4], room_array[9 * 4], NULL);
+    link_room(9, room_array[8 * 4], room_array[10* 4], NULL, NULL);
+    link_room(10, NULL, room_array[11 * 4], NULL, room_array[9 * 4]);
+    link_room(11, NULL, NULL, room_array[12 * 4], room_array[10 * 4]);
+    link_room(12, room_array[11 * 4], room_array[13 * 4], room_array[16 * 4], room_array[14 * 4]);
+    link_room(13, NULL, NULL, NULL, room_array[12 * 4]);
+    link_room(14, NULL, room_array[12 * 4], room_array[15 * 4], NULL);
+    link_room(15, room_array[14 * 4], room_array[16 * 4], NULL, NULL);
+    link_room(16, room_array[12 * 4], room_array[17 * 4], NULL, room_array[15 * 4]);
+    link_room(17, NULL, room_array[18 * 4], NULL, room_array[16 * 4]);
+    link_room(18, room_array[19 * 4], NULL, NULL, room_array[17 * 4]);
+    link_room(19, room_array[20 * 4], NULL, room_array[18 * 4], NULL);
+    link_room(20, NULL, room_array[21 * 4], room_array[19 * 4], NULL);
+    link_room(21, NULL, room_array[22 * 4], NULL, room_array[20 * 4]);
+    link_room(22, NULL, NULL, room_array[23 * 4], room_array[21 * 4]);
+    link_room(23, room_array[22 * 4], NULL, room_array[24 * 4], NULL);
+    link_room(24, room_array[23 * 4], NULL, NULL, NULL);
+    
+end link_map;
+
+procedure user_interface;
+var
+    valid_chars:cset;
+begin user_interface;
+
+    push(eax);
+    push(ecx);
+    push(esi);
+    
+    stdout.put("Welcome to Super Duper Maze!", nl, nl);
+    stdout.put("Please enter your name: ");
+    stdin.flushInput();
+    stdin.a_gets();
+    mov(eax, player_one.id);
+    rand.urange(0, 24);
+    mov(room_array[eax * 4], esi);
+
+    _user_interface:
+    
+        console.cls();
+        cs.empty(valid_chars);
+        
+        stdout.put(player_one.id, ", you have $", player_one.data, '.', nl);
+        stdout.put(nl, "You are in room #", (type room [esi]).id, nl);
+        
+        cmp((type room [esi]).data, 0);
+        jna _no_money;
+        
+            stdout.put("There is $", (type room [esi]).data, " in the room.", nl);
+        
+        _no_money:
+        
+        stdout.newln();
+        stdout.put("Go ->", nl);
+    
+        cmp((type room [esi]).north, NULL);
+        je _no_north;
+        
+            cs.unionChar('N', valid_chars);
+            stdout.put("[N]orth", nl);
+            
+        _no_north:
+        
+        cmp((type room [esi]).east, NULL);
+        je _no_east;
+        
+            cs.unionChar('E', valid_chars);
+            stdout.put("[E]ast", nl);
+            
+        _no_east:
+        
+        cmp((type room [esi]).south, NULL);
+        je _no_south;
+        
+            cs.unionChar('S', valid_chars);
+            stdout.put("[S]outh", nl);
+            
+        _no_south:
+        
+        cmp((type room [esi]).west, NULL);
+        je _no_west;
+        
+            cs.unionChar('W', valid_chars);
+            stdout.put("[W]est", nl);
+            
+        _no_west:
+        
+        stdout.newln();
+        
+        cmp((type room [esi]).data, 0);
+        jna __no_money;
+        
+            cs.unionChar('P', valid_chars);
+            stdout.put("[P]ick up cash", nl);
+            
+        __no_money:
+        
+        stdout.put("[M]ap", nl);
+        cs.unionChar('M', valid_chars);
+        stdout.put("[Q]uit", nl, nl);
+        cs.unionChar('Q', valid_chars);
+        
+        stdout.put("> ");
+    
+        stdin.flushInput();
+        stdin.getc();
+        mov(chars.toUpper(al), al);
+        
+        if (al in valid_chars) then
+            cmp(al, 'N');
+            jne _end_north;
+            cmp((type room [esi]).north, NULL);
+            je _end_north;
+            
+            _north:
+                mov((type room [esi]).north, esi);
+            
+            _end_north:
+            
+            cmp(al, 'E');
+            jne _end_east;
+            cmp((type room [esi]).east, NULL);
+            je _end_east;
+            
+            _east:
+                mov((type room [esi]).east, esi);
+            
+            _end_east:
+            
+            cmp(al, 'S');
+            jne _end_south;
+            cmp((type room [esi]).south, NULL);
+            je _end_south;
+            
+            _south:
+                mov((type room [esi]).south, esi);
+            
+            _end_south:
+            
+            cmp(al, 'W');
+            jne _end_west;
+            cmp((type room [esi]).west, NULL);
+            je _end_west;
+            
+            _west:
+                mov((type room [esi]).west, esi);
+            
+            _end_west:
+            
+            cmp(al, 'P');
+            jne _end_pick_up;
+            cmp((type room [esi]).data, 0);
+            jna _end_pick_up;
+            
+            _pick_up:
+                stdout.put(nl, "You picked up $", (type room [esi]).data, '.', nl, nl);
+                mov((type room [esi]).data, al);
+                add(al, player_one.data);
+                mov(0, (type room [esi]).data);
+                stdout.put("Press enter to continue...");
+                stdin.flushInput();
+                stdin.readLn();
+            
+            _end_pick_up:
+            
+            cmp(al, 'M');
+            jne _end_map;
+            
+            _map:
+                show_map();
+                stdout.put("Press enter to continue...");
+                stdin.flushInput();
+                stdin.readLn();
+            
+            _end_map:
+        else
+            stdout.put("Invalid choice", nl, nl);
+            stdout.put("Press enter to continue...");
+            stdin.flushInput();
+            stdin.readLn();
+        endif;
+    
+    cmp(al, 'Q');
+    jne _user_interface;
+    
+    stdout.put(nl, player_one.id, ", you picked up a total of $", player_one.data, '.', nl, nl);
+    stdout.put("Press enter to exit.");
+    stdin.flushInput();
+    stdin.readLn();
+    
+    pop(esi);
+    pop(ecx);
+    pop(eax);
+
+end user_interface;
+
+procedure show_map;
+begin show_map;
+
+    stdout.put
+    (
+        nl,
+        "      +", nl,
+        "      |", nl,
+        "      +--+", nl,
+        "         |", nl,
+        "   +--+--+--+", nl,
+        "   |", nl,
+        "+--+", nl,
+        "|", nl,
+        "+--+--+     +--+--+", nl,
+        "      |     |     |", nl,
+        "   +--+--+  +     +", nl,
+        "   |        |     |", nl,
+        "   +--+--+--+     +", nl,
+        nl
+    );
+    
+end show_map;
+    
+begin lab_05;
+
+    rand.randomize();
+    allocate_rooms();
+    link_map();
+    user_interface();
+    clean_up();
+    
+end lab_05;

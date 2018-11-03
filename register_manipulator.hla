@@ -1,0 +1,318 @@
+/*
+ * register_manipulator.hla
+ *
+ * written by			Daniel G. Arnold
+ *
+ * This program lets the user manipulate four general purpose
+ * registers. It allows the user to clear the registers, fill
+ * the registers with computer-generated pseudorandom numbers,
+ * alter the data in specific registers and perform basic
+ * arithmetic on the data stored in specific registers.
+ *
+ */
+ 
+program register_manipulator;
+
+    #include("stdlib.hhf")
+    
+static
+
+    number          :   uns32   :=  0;
+    sum             :   uns32   :=  0;
+    choice          :   uns8    :=  0;
+    first_operand   :   uns8    :=  0;
+    second_operand  :   uns8    :=  0;
+    operation       :   uns8    :=  0;
+    destination     :   uns8    :=  0;
+    decimal         :   boolean :=  false;
+    bad_input       :   boolean :=  false;
+    
+begin register_manipulator;
+
+    stdout.put("Welcome to the Register Manipulator!", nl);
+
+    repeat
+        stdout.put
+        (
+            nl,
+            "*--------------------------*", nl,
+            "|                          |", nl,
+            "| (1) Clear all registers  |", nl,
+            "| (2) Fill all registers   |", nl,
+            "| (3) Alter a register     |", nl,
+            "| (4) Perform arithmetic   |", nl,
+            "| (5) Toggle view          |", nl,
+            "| (6) Help                 |", nl,
+            "|                          |", nl,
+            "| '0' to quit              |", nl,
+            "|                          |", nl,
+            "*--------------------------*", nl
+        );
+        
+        if (decimal) then
+            stdout.put
+            (
+                "| (View mode: decimal)     |", nl, 
+                "*--------------------------*", nl, nl,
+                "EAX[ ", (type uns32 eax), " ]  ",
+                "EBX[ ", (type uns32 ebx), " ]  ",
+                "ECX[ ", (type uns32 ecx), " ]  ",
+                "EDX[ ", (type uns32 edx), " ]", nl, nl
+            );
+        else
+            stdout.put
+            (
+                "| (View mode: hexadecimal) |", nl,
+                "*--------------------------*", nl, nl,
+                "EAX[ 0x", eax, " ]  ",
+                "EBX[ 0x", ebx, " ]  ",
+                "ECX[ 0x", ecx, " ]  ",
+                "EDX[ 0x", edx, " ]", nl, nl
+            );
+        endif;
+        
+        repeat
+            try
+                mov(false, bad_input);
+                stdout.put("> ");
+                stdin.get(choice);
+            anyexception
+                stdout.put("Error: Invalid input", nl);
+                mov(true, bad_input);
+            endtry;
+        until (!bad_input);
+        
+        if (choice == 1) then
+            mov(0, eax);
+            mov(0, ebx);
+            mov(0, ecx);
+            mov(0, edx);
+        elseif (choice == 2) then
+            rand.random();
+            mov(eax, ebx);
+            rand.random();
+            mov(eax, ecx);
+            rand.random();
+            mov(eax, edx);
+            rand.random();
+        elseif (choice == 3) then
+            stdout.put
+            (
+                nl,
+                "Registers", nl,
+                "---------", nl,
+                "(1) EAX", nl,
+                "(2) EBX", nl,
+                "(3) ECX", nl,
+                "(4) EDX", nl, nl
+            );
+            
+            repeat
+                try
+                    mov(false, bad_input);
+                    stdout.put("> ");
+                    stdin.get(choice);
+                anyexception
+                    stdout.put("Error: Invalid input", nl);
+                    mov(true, bad_input);
+                endtry;
+            until (!bad_input);
+            
+            repeat
+                try
+                    mov(false, bad_input);
+                    stdout.put("New value: ");
+                    stdin.get(number);
+                anyexception
+                    stdout.put("Error: Invalid input", nl);
+                    mov(true, bad_input);
+                endtry;
+            until (!bad_input);
+            
+            if (choice == 1) then
+                mov(number, eax);
+            elseif (choice == 2) then
+                mov(number, ebx);
+            elseif (choice == 3) then
+                mov(number, ecx);
+            elseif (choice == 4) then
+                mov(number, edx);
+            endif;
+            
+        elseif (choice == 4) then
+            stdout.put
+            (
+                nl,
+                "First Operand", nl,
+                "-------------", nl,
+                "(1) EAX", nl,
+                "(2) EBX", nl,
+                "(3) ECX", nl,
+                "(4) EDX", nl, nl
+            );
+            
+            repeat
+                try
+                    mov(false, bad_input);
+                    stdout.put("> ");
+                    stdin.get(first_operand);
+                anyexception
+                    stdout.put("Error: Invalid input", nl);
+                    mov(true, bad_input);
+                endtry;
+            until (!bad_input);
+            
+            stdout.put
+            (
+                nl,
+                "Second Operand", nl,
+                "--------------", nl,
+                "(1) EAX", nl,
+                "(2) EBX", nl,
+                "(3) ECX", nl,
+                "(4) EDX", nl, nl
+            );
+                
+            repeat
+                try
+                    mov(false, bad_input);
+                    stdout.put("> ");
+                    stdin.get(second_operand);
+                anyexception
+                    stdout.put("Error: Invalid input", nl);
+                    mov(true, bad_input);
+                endtry;
+            until (!bad_input);
+            
+            stdout.put
+            (
+                nl,
+                "Destination Register", nl,
+                "--------------------", nl,
+                "(1) EAX", nl,
+                "(2) EBX", nl,
+                "(3) ECX", nl,
+                "(4) EDX", nl, nl
+            );
+            
+            repeat
+                try
+                    mov(false, bad_input);
+                    stdout.put("> ");
+                    stdin.get(destination);
+                anyexception
+                    stdout.put("Error: Invalid input", nl);
+                    mov(true, bad_input);
+                endtry;
+            until (!bad_input);
+            
+            stdout.put
+            (
+                nl,
+                "Operation", nl,
+                "---------", nl,
+                "(1) +", nl,
+                "(2) -", nl,
+                "(3) *", nl, nl
+            );
+            
+            repeat
+                try
+                    mov(false, bad_input);
+                    stdout.put("> ");
+                    stdin.get(operation);
+                anyexception
+                    stdout.put("Error: Invalid input", nl);
+                    mov(true, bad_input);
+                endtry;
+            until (!bad_input);
+            
+            if (first_operand == 1) then
+                mov(eax, number);
+            elseif (first_operand == 2) then
+                mov(ebx, number);
+            elseif (first_operand == 3) then
+                mov(ecx, number);
+            endif;
+            
+            if (operation == 1) then
+                
+                if (second_operand == 1) then
+                    add(eax, number);
+                elseif (second_operand == 2) then
+                    add(ebx, number);
+                elseif (second_operand == 3) then
+                    add(ecx, number);
+                elseif (second_operand == 4) then
+                    add(edx, number);
+                endif;
+                
+            elseif (operation == 2) then
+                
+                if (second_operand == 1) then
+                    sub(eax, number);
+                elseif (second_operand == 2) then
+                    sub(ebx, number);
+                elseif (second_operand == 3) then
+                    sub(ecx, number);
+                elseif (second_operand == 4) then
+                    sub(edx, number);
+                endif;
+            
+            elseif (operation == 3) then
+                
+                if (second_operand == 1) then
+                    mul(number, eax);
+                elseif (second_operand == 2) then
+                    mov(ebx, eax);
+                    mul(number, eax);
+                    mov(eax, number);
+                elseif (second_operand == 3) then
+                    mov(ecx, eax);
+                    mul(number, eax);
+                    mov(eax, number);
+                elseif (second_operand == 4) then
+                    mov(edx, eax);
+                    mul(number, eax);
+                    mov(eax, number);
+                endif;
+            
+            endif;
+                
+                if (destination == 1) then
+                    mov(number, eax);
+                elseif (destination == 2) then
+                    mov(number, ebx);
+                elseif (destination == 3) then
+                    mov(number, ecx);
+                elseif (destination == 4) then
+                    mov(number, edx);
+                endif;
+                
+        elseif (choice == 5) then 
+            
+            if (decimal) then
+                mov(false, decimal);
+            else
+                mov(true, decimal);
+            endif;
+            
+        elseif (choice == 6) then
+            stdout.put(
+                nl,
+                "(1) Clear all registers: Set registers to 0", nl,
+                "(2) Fill all registers: Fill registers with pseudorandom numbers", nl,
+                "(3) Alter a register: Set a specific register", nl,
+                "(4) Perform arithmetic: Perform basic arithmetic on registers", nl,
+                "(5) Toggle view: Alternate register view", nl,
+                "(6) Help: Show this help dialogue", nl, nl,
+                "Press enter to continue..."  
+            );
+            stdin.readLn();
+        endif;
+        
+    until (choice == 0);
+    
+    stdout.put("Goodbye.", nl);
+
+end register_manipulator;

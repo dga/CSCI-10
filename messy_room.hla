@@ -1,0 +1,418 @@
+/*
+ * messy_room.hla
+ *
+ * written by			Daniel G. Arnold
+ *
+ * This program is supposed to simulate a messy room. It allows the user
+ * to add, remove and view grid resources. It demonstrates the use of
+ * dynamic memory and some high-level HLA facilities like records.
+ *
+ */
+
+program messy_room;
+
+	#include("stdlib.hhf")
+	
+type resource : record
+    r_name      :   string;
+    r_type      :   char;
+    r_cost      :   uns8;
+    r_health    :   uns8;
+    fluff       :   byte;
+endrecord;
+
+type p_resource :   pointer to resource;
+
+static
+    r_array     :   p_resource[4, 4];
+    coordinates :   uns16;  // Used for output display purposes
+
+procedure get_uns8(val prompt:string; val lower:uns16; val upper:uns16); @returns("al"); @forward;
+procedure get_coordinates; @returns("al"); @returns("ah"); @forward;
+procedure compute_offset(val row:uns8; val col:uns8); @returns("eax"); @forward;
+procedure process_choice; @forward;
+procedure add_resource(val offset:uns32); @forward;
+procedure remove_resource(val offset:uns32); @forward;
+procedure view_resource(val offset:uns32); @forward;
+procedure clean_up; @forward;
+procedure main_menu; @forward;
+procedure display_grid; @forward;
+
+procedure get_uns8(val prompt:string; val lower:uns16; val upper:uns16);
+var
+    range   :   uns16[2];
+begin get_uns8;
+
+    push(eax);
+    push(ebx);
+    push(ecx);
+    push(edx);
+    push(edi);
+    push(esi);
+    push(ebp);
+    push(esp);
+
+    mov(lower, range[0]);
+    mov(upper, range[2]);
+
+    forever
+        try
+            stdout.put(prompt);
+            stdin.flushInput();
+            stdin.getu16();
+            bound(ax, range);
+            
+        unprotected break;
+        exception(ex.ConversionError)
+            stdout.put("Please enter a number between ", lower, " and ", upper, '.', nl);
+        exception(ex.ValueOutOfRange)
+            stdout.put("Please enter a number between ", lower, " and ", upper, '.', nl);
+        exception(ex.BoundInstr)
+            stdout.put("Please enter a number between ", lower, " and ", upper, '.', nl);
+        endtry;
+    endfor;
+    
+    pop(esp);
+    pop(ebp);
+    pop(esi);
+    pop(edi);
+    pop(edx);
+    pop(ecx);
+    pop(ebx);
+    
+
+end get_uns8;
+
+procedure get_coordinates;
+begin get_coordinates;
+
+    push(ebx);
+
+    stdout.newln();
+    get_uns8("Enter row number: ", 1, 4);
+    mov(al, bl);    // Move row number into lower 8 bits of BX
+    get_uns8("Enter column number: ", 1, 4);
+    mov(al, bh);    // Move column number into upper 8 bits of BX
+    mov(bl, al);    // Move row number back into lower 8 bits of AX
+    mov(bh, ah);    // Move column number into upper 8 bits of AX
+    
+    pop(ebx);
+    
+end get_coordinates;
+
+procedure compute_offset(val row:uns8; val col:uns8);
+begin compute_offset;
+
+    push(ebx);
+
+    mov(0, eax);    // Clear EAX
+    mov(row, al);
+    mov(0, ebx);    // Clear EBX
+    mov(col, bl);
+    dec(eax);
+    dec(ebx);
+    shl(2, eax);    // Multiply by row size (4)
+    add(ebx, eax);  // Add column index
+    
+    pop(ebx);
+    
+end compute_offset;
+
+procedure process_choice;
+begin process_choice;
+
+    if (chars.toUpper(al) == 'A') then
+        get_coordinates();
+        mov(ax, coordinates);
+        add_resource(compute_offset(al, ah));
+        pop(eax);
+    elseif (chars.toUpper(al) == 'R') then
+        get_coordinates();
+        mov(ax, coordinates);
+        remove_resource(compute_offset(al, ah));
+        pop(eax);
+    elseif (chars.toUpper(al) == 'V') then
+        get_coordinates();
+        mov(ax, coordinates);
+        view_resource(compute_offset(al, ah));
+        pop(eax);
+    elseif (chars.toUpper(al) == 'Q') then
+        stdout.put(nl, "Goodbye!", nl);
+    else
+        stdout.put("Invalid input", nl);
+    endif;
+
+end process_choice;
+
+procedure add_resource(val offset:uns32);
+begin add_resource;
+
+    push(eax);
+    push(ebx);
+    push(ecx);
+    push(esi);
+
+    mov(&r_array, ebx);
+    mov(offset, ecx);
+    
+    if ((type p_resource [ebx + ecx * 4]) == NULL) then
+        malloc(@size(resource));
+        mov(eax, esi);
+        
+        stdout.put
+        (
+            nl,
+            "Choose a resource type:",
+            nl,
+            nl,
+            "1) Beer Bottle", nl,
+            "2) Crumpled Tissue", nl,
+            "3) Dirty Laundry", nl,
+            "4) Yesterday's Homework", nl,
+            "5) Cockroach", nl,
+            nl
+        );
+            
+        get_uns8("> ", 1, 5);
+            
+        if (al == 1) then
+            mov('B', (type resource [esi]).r_type);
+            mov(10, (type resource [esi]).r_cost);
+        elseif (al == 2) then
+            mov('T', (type resource [esi]).r_type);
+            mov(5, (type resource [esi]).r_cost);
+        elseif (al == 3) then
+            mov('L', (type resource [esi]).r_type);
+            mov(20, (type resource [esi]).r_cost);
+        elseif (al == 4) then
+            mov('H', (type resource [esi]).r_type);
+            mov(10, (type resource [esi]).r_cost);
+        elseif (al == 5) then
+            mov('C', (type resource [esi]).r_type);
+            mov(5, (type resource [esi]).r_cost);
+        else
+            stdout.put("Type ", (type uns8 al), " doesn't exist.", nl);
+            stdout.put("Press enter to continue...");
+            stdin.readLn();
+            stdout.newln();
+        endif;
+        
+        stdout.put(nl, "Enter resource name: ");
+        stdin.flushInput();
+        stdin.a_gets();
+        mov(eax, (type resource [esi]).r_name);
+        mov(esi, [ebx + ecx * 4]);
+        stdout.put(nl, "Resource added.", nl, nl);
+    else
+        mov(coordinates, ax);
+        stdout.put(nl, "Sorry, but [", (type uns8 al), ", ", (type uns8 ah), "] is presently occupied.", nl, nl);
+    endif;
+    
+    stdout.put("Press enter to continue...");
+    stdin.readLn();
+    stdout.newln();
+    
+    pop(esi);
+    pop(ecx);
+    pop(ebx);
+    pop(eax);
+
+end add_resource;
+
+procedure remove_resource(val offset:uns32);
+begin remove_resource;
+
+    push(eax);
+    push(ebx);
+    push(ecx);
+    push(esi);
+
+    mov(&r_array, ebx);
+    mov(offset, ecx);
+    mov([ebx + ecx * 4], esi);
+    
+    if (esi != NULL) then
+        if ((type resource [esi]).r_name != NULL) then
+            strfree((type resource [esi]).r_name);
+            mov(0, (type resource [esi]).r_name);
+        endif;
+       
+        free(esi);
+        mov(0, (type p_resource [ebx + ecx * 4]));
+        
+        stdout.put(nl, "Resource removed.", nl, nl);
+    else
+        mov(coordinates, ax);
+        stdout.put(nl, "Sorry, there is no resource at [", (type uns8 al), ", ", (type uns8 ah), "].", nl, nl);
+    endif;
+    
+    stdout.put("Press enter to continue...");
+    stdin.readLn();
+    stdout.newln();
+    
+    pop(esi);
+    pop(ecx);
+    pop(ebx);
+    pop(eax);
+
+end remove_resource;
+
+procedure view_resource(val offset:uns32);
+begin view_resource;
+
+    push(eax);
+    push(ebx);
+    push(ecx);
+    push(esi);
+
+    mov(&r_array, ebx);
+    mov(offset, ecx);
+    mov([ebx + ecx * 4], esi);
+    
+    if (esi != NULL) then
+        stdout.put(nl, "Resource type: ");
+        
+        if ((type resource [esi]).r_type == 'B') then
+            stdout.put("Beer Bottle");
+        elseif ((type resource [esi]).r_type == 'T') then
+            stdout.put("Crumpled Tissue");
+        elseif ((type resource [esi]).r_type == 'L') then
+            stdout.put("Dirty Laundry");
+        elseif ((type resource [esi]).r_type == 'H') then
+            stdout.put("Yesterday's Homework");
+        elseif ((type resource [esi]).r_type == 'C') then
+            stdout.put("Cockroach");
+        endif;
+        
+        stdout.newln();
+        stdout.put("Name: ", (type resource [esi]).r_name, nl);
+        stdout.put("Cost: ", (type resource [esi]).r_cost, nl);
+        stdout.put("Health: ", (type resource [esi]).r_health, nl, nl);
+    else
+        mov(coordinates, ax);
+        stdout.put(nl, "Sorry, there is no resource at [", (type uns8 al), ", ", (type uns8 ah), "].", nl, nl);
+    endif;
+    
+    stdout.put("Press enter to continue...");
+    stdin.readLn();
+    stdout.newln();
+    
+    pop(esi);
+    pop(ecx);
+    pop(ebx);
+    pop(eax);
+    
+end view_resource;
+
+procedure clean_up;
+begin clean_up;
+
+    push(eax);
+    push(ebx);
+    push(ecx);
+    push(edx);
+    push(esi);
+    
+    mov(&r_array, eax);
+    
+    for (mov(0, ecx); ecx < 4; inc(ecx)) do
+        for (mov(0, edx); edx < 4; inc(edx)) do
+            mov(ecx, ebx);
+            shl(2, ebx);
+            add(edx, ebx);
+            mov([eax + ebx * 4], esi);
+            
+            if (esi != NULL) then
+                if ((type resource [esi]).r_name != NULL) then
+                    strfree((type resource [esi]).r_name);
+                    mov(0, (type resource [esi]).r_name);
+                endif;
+                
+                free(esi);
+                mov(0, (type p_resource [eax + ebx * 4]));
+            endif;
+            
+        endfor;
+    endfor;
+    
+    pop(esi);
+    pop(edx);
+    pop(ecx);
+    pop(ebx);
+    pop(eax);
+
+end clean_up;
+
+
+procedure main_menu;
+begin main_menu;
+
+    stdout.put
+    (
+        nl, nl,
+        nl,
+        "[A]dd resource  [R]emove resource  [V]iew resource  [Q]uit", nl
+    );
+
+end main_menu;
+    
+procedure display_grid;
+begin display_grid;
+
+    push(eax);
+    push(ebx);
+    push(ecx);
+    push(edx);
+    push(edi);
+    push(esi);
+
+    stdout.put(stdio.tab, '1', stdio.tab, '2', stdio.tab, '3', stdio.tab, '4', nl, nl);
+    
+    mov(&r_array, esi);
+    
+    for (mov(0, ecx); ecx < 4; inc(ecx)) do
+        mov(cl, al);
+        inc(al);    // Increment count to print out row numbers
+        stdout.put((type uns8 al), stdio.tab);
+        
+        for (mov(0, edx); edx < 4; inc(edx)) do
+            mov(ecx, ebx);
+            shl(2, ebx);
+            add(edx, ebx);
+            mov([esi + ebx * 4], edi);
+            
+            if (edi == NULL) then
+                stdout.put('-', stdio.tab);
+            else
+                stdout.put((type resource [edi]).r_type, stdio.tab);
+            endif;
+            
+        endfor;
+        
+        stdout.newln();
+        
+    endfor;
+    
+    pop(esi);
+    pop(edi);
+    pop(edx);
+    pop(ecx);
+    pop(ebx);
+    pop(eax);
+
+end display_grid;
+
+begin messy_room;
+
+    repeat
+        display_grid();
+        main_menu();
+        stdout.put(nl, "> ");
+        stdin.flushInput();
+        stdin.getc();
+        process_choice();
+    until (chars.toUpper(al) == 'Q');
+    
+    clean_up();
+
+end messy_room;

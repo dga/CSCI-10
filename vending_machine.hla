@@ -1,0 +1,422 @@
+/*
+ * vending_machine.hla
+ *
+ * written by			Daniel G. Arnold
+ *
+ * This program simulates a simple vending machine. It allows
+ * the user to select one of eight items and gives the user the
+ * option to pay all at once, incrementally or back out of the
+ * deal. The user also has the ability to save the program's
+ * data to the hard disk for later use.
+ *
+ */
+
+program vending_machine;
+
+    #include("stdlib.hhf")
+
+static
+
+    // inventory variables
+    taco        :uns8   :=  10;
+    burrito     :uns8   :=  10;
+    chimichanga :uns8   :=  10;
+    quesadilla  :uns8   :=  10;
+    tamale      :uns8   :=  10;
+    tostada     :uns8   :=  10;
+    carnita     :uns8   :=  10;
+    enchilada   :uns8   :=  10;
+    
+    // misc. program variables
+    credits     :uns8   :=  100;
+    cost        :uns8   :=  0;
+    choice      :char   :=  'z';
+    credits_inserted    :uns8   :=  0;
+    
+    // file i/o variables
+    the_file:dword;
+    file_exists:boolean;
+    
+// forward declarations to allow for recursive procedure calls
+procedure file_read; @returns("al"); @forward;
+procedure file_write; @forward;
+procedure get_char; @returns("al"); @forward;
+procedure get_num(val lower : uns8; val upper : uns8); @returns("al"); @forward;
+procedure in_stock; @returns("al"); @forward;
+procedure process_choice; @forward;
+procedure calculate_cost; @forward;
+procedure get_payment; @forward;
+procedure adjust_inventory; @forward;
+procedure main_menu; @forward;
+procedure receipt; @forward;
+
+// file i/o procedures
+procedure file_read;
+begin file_read;
+
+    mov(false, file_exists);
+    
+    try
+        fileio.open("vm.dat", fileio.r);
+        mov(eax, the_file);
+        mov(true, file_exists);
+        unprotected;
+    anyexception
+        stdout.put(nl, "Error: Failed to open vm.dat for processing.");
+    endtry;
+    
+    if (file_exists) then
+        mov(&taco, ebx);
+        
+        for (mov(0, ecx); !fileio.eof(the_file); inc(ecx)) do
+            fileio.get(the_file, (type uns8 dl));
+            mov(dl, [ebx + ecx]);
+            fileio.readLn(the_file);
+        endfor;
+       
+        fileio.close(the_file);
+    endif;
+    
+    mov(file_exists, al);
+
+end file_read;
+
+procedure file_write;
+begin file_write;
+
+    fileio.openNew("vm.dat");
+    mov(eax, the_file);
+    mov(&taco, ebx);
+    
+    for(mov(0, ecx); ecx < 9; inc(ecx)) do
+        mov([ebx + ecx], edx);
+        fileio.put(the_file, (type uns8 dl), nl);
+    endfor;
+    
+    fileio.close(the_file);
+
+end file_write;
+
+// input procedures
+procedure get_char;
+begin get_char;
+
+    forever
+        try
+            stdout.put("> ");
+            stdin.flushInput();
+            stdin.getc();
+            chars.toUpper(al);
+        unprotected
+            breakif(al >= 'A' && al <= 'H' || al == 'Q' || al == 'L' || al == 'S');
+            stdout.put("Please enter one of the menu choices.", nl);
+        exception(ex.IllegalChar)
+            stdout.put("Error: You entered an illegal character.", nl);
+        anyexception
+            stdout.put("Error: Invalid input", nl);
+        endtry;
+    endfor;
+
+end get_char;
+
+procedure get_num(val lower : uns8; val upper : uns8);
+begin get_num;
+
+    forever
+        try
+            stdout.put("> ");
+            stdin.flushInput();
+            stdin.getu8();
+        unprotected
+            breakif(al >= lower && al <= upper);
+            stdout.put("Please enter a number between ", lower, " and ", upper, '.', nl);
+        exception(ex.ValueOutOfRange)
+            stdout.put("Error: The value is out of range.", nl);
+        exception(ex.ConversionError)
+            stdout.put("Error: You did not enter a number.", nl);
+        anyexception
+            stdout.put("Error: Invalid input", nl);
+        endtry;
+    endfor;
+
+end get_num;
+
+procedure in_stock;
+begin in_stock;
+
+    mov(false, al);
+
+    if (choice == 'A') then
+        if (taco > 0) then
+            mov(true, al);
+        endif;
+    elseif (choice == 'B') then
+        if (burrito > 0) then
+            mov(true, al);
+        endif;
+    elseif (choice == 'C') then
+        if (chimichanga > 0) then
+            mov(true, al);
+        endif;
+    elseif (choice == 'D') then
+        if (quesadilla > 0) then
+            mov(true, al);
+        endif;
+    elseif (choice == 'E') then
+        if (tamale > 0) then
+            mov(true, al);
+        endif;
+    elseif (choice == 'F') then
+        if (tostada > 0) then
+            mov(true, al);
+        endif;
+    elseif (choice == 'G') then
+        if (carnita > 0) then
+            mov(true, al);
+        endif;
+    elseif (choice == 'H') then
+        if (enchilada > 0) then
+            mov(true, al);
+        endif;
+    else
+        stdout.put("Error: Item '", choice, "' doesn't exist.", nl);
+    endif;
+
+end in_stock;
+
+// vending machine procedures
+procedure process_choice;
+begin process_choice;
+
+    if (choice == 'L') then
+        if (file_read()) then
+            stdout.put(nl, "Program data loaded. Press enter to continue...");
+        else
+            stdout.put(" Press enter to continue...");
+        endif;
+            
+        stdin.readLn();
+        stdout.newln();
+    elseif (choice == 'S') then
+        file_write();
+        stdout.put(nl, "Program data saved. Press enter to continue...");
+        stdin.readLn();
+        stdout.newln();
+    else
+        if (choice != 'Q') then
+            calculate_cost();
+                if (in_stock()) then
+                    get_payment();
+                else
+                    stdout.put
+                    (
+                        nl,
+                        "Sorry, item is out of stock.", nl, nl,
+                        "Press enter to continue..."
+                    );
+                    
+                    stdin.readLn();
+                    stdout.newln();
+                endif;
+        endif;
+    endif;
+
+end process_choice;
+
+procedure calculate_cost;
+begin calculate_cost;
+
+    if (choice == 'A') then
+        mov(4, cost);
+    elseif (choice == 'B') then
+        mov(16, cost);
+    elseif (choice == 'C') then
+        mov(21, cost);
+    elseif (choice == 'D') then
+        mov(6, cost);
+    elseif (choice == 'E') then
+        mov(8, cost);
+    elseif (choice == 'F') then
+        mov(12, cost);
+    elseif (choice == 'G') then
+        mov(9, cost);
+    elseif (choice == 'H') then
+        mov(10, cost);
+    else
+        stdout.put("Error: Item '", choice, "' doesn't exist.", nl);
+    endif;
+
+end calculate_cost;
+
+procedure get_payment;
+begin get_payment;
+
+    mov(0, credits_inserted);
+
+    forever
+        stdout.put
+        (
+            nl,
+            "Credits remaining: ", credits, nl,
+            "Amount owed: ", cost, " credits", nl,
+            "Credits inserted: ", credits_inserted, nl, nl, nl,
+            "(1) Insert credits", nl,
+            "(2) Abort purchase", nl, nl
+        );
+        get_num(1, 2);
+    
+        if (al == 1) then
+            stdout.put(nl, "Number of credits to insert");
+            get_num(0, credits);
+            if (al == cost) then
+                mov(al, credits_inserted);
+                sub(al, credits);
+                sub(al, cost);
+                adjust_inventory();      
+                receipt();
+                stdout.put("Press enter to continue...");
+                stdin.readLn();
+                stdout.newln();
+                break;
+            elseif (al < cost) then
+                mov(al, credits_inserted);
+                sub(al, credits);
+                sub(al, cost);
+            elseif (al > cost) then
+                mov(cost, ah);
+                mov(ah, credits_inserted);
+                sub(ah, credits);
+                sub(ah, cost);
+                sub(ah, al);
+                adjust_inventory();
+                receipt();
+                stdout.put("Your change: ", (type uns8 al), " credits.", nl, nl);
+                stdout.put("Press enter to continue...");
+                stdin.readLn();
+                stdout.newln();
+                break;
+            endif;
+        elseif (al == 2) then
+            if (credits_inserted > 0) then
+                stdout.put("You have been refunded ", credits_inserted, " credits.", nl);
+                stdout.put("Press enter to continue...");
+                stdin.readLn();
+                stdout.newln();
+                mov(credits_inserted, al);
+                add(al, credits);
+            endif;
+            break;
+        endif;
+    endfor;
+        
+end get_payment;
+
+procedure adjust_inventory;
+begin adjust_inventory;
+
+    if (choice == 'A') then
+        dec(taco);
+    elseif (choice == 'B') then
+        dec(burrito);
+    elseif (choice == 'C') then
+        dec(chimichanga);
+    elseif (choice == 'D') then
+        dec(quesadilla);
+    elseif (choice == 'E') then
+        dec(tamale);
+    elseif (choice == 'F') then
+        dec(tostada);
+    elseif (choice == 'G') then
+        dec(carnita);
+    elseif (choice == 'H') then
+        dec(enchilada);
+    else
+        stdout.put("Error: Item '", choice, "' doesn't exist.", nl);
+    endif;
+
+end adjust_inventory;
+
+// display procedures
+procedure main_menu;
+begin main_menu;
+
+    stdout.put
+    (
+        "~                             ~", nl,
+        "~~~                         ~~~", nl,
+        "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", nl,
+        "*******************************", nl,
+        "**   Daniel's Taco Express   **", nl,
+        "*******************************", nl,
+        "** ["
+    );
+    stdout.putu8Size(taco, 2, ' ');
+    stdout.put("] (a) Taco          4c **", nl, "** [");
+    stdout.putu8Size(burrito, 2, ' ');    
+    stdout.put("] (b) Burrito      16c **", nl, "** [");
+    stdout.putu8Size(chimichanga, 2, ' ');
+    stdout.put("] (c) Chimichanga  21c **", nl, "** [");
+    stdout.putu8Size(quesadilla, 2, ' ');
+    stdout.put("] (d) Quesadilla    6c **", nl, "** [");
+    stdout.putu8Size(tamale, 2, ' ');
+    stdout.put("] (e) Tamale        8c **", nl, "** [");
+    stdout.putu8Size(tostada, 2, ' ');
+    stdout.put("] (f) Tostada      12c **", nl, "** [");
+    stdout.putu8Size(carnita, 2, ' ');
+    stdout.put("] (g) Carnita       9c **", nl, "** [");
+    stdout.putu8Size(enchilada, 2, ' ');
+    stdout.put
+    (
+        "] (h) Enchilada    10c **", nl,
+        "**                           **", nl,
+        "** (l) Load                  **", nl,
+        "** (s) Save                  **", nl,
+        "** (q) Quit                  **", nl,
+        "*******************************", nl,
+        "*******************************", nl,
+        "** Credits:"
+    );
+    stdout.putu8Size(credits, 4, ' ');
+    stdout.put("              **", nl,
+        "*******************************", nl,
+        "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", nl,
+        "~~~                         ~~~", nl,
+        "~                             ~", nl
+    );
+        
+end main_menu;
+
+procedure receipt;
+begin receipt;
+
+    if (choice == 'A') then
+        stdout.put(nl, "You have purchased a taco!", nl, nl);
+    elseif (choice == 'B') then
+        stdout.put(nl, "You have purchased a burrito!", nl, nl);
+    elseif (choice == 'C') then
+        stdout.put(nl, "You have purchased a chimichanga!", nl, nl);
+    elseif (choice == 'D') then
+        stdout.put(nl, "You have purchased a quesadilla!", nl, nl);
+    elseif (choice == 'E') then
+        stdout.put(nl, "You have purchased a tamale!", nl, nl);
+    elseif (choice == 'F') then
+        stdout.put(nl, "You have purchased a tostada!", nl, nl);
+    elseif (choice == 'G') then
+        stdout.put(nl, "You have purchased a carnita!", nl, nl);
+    elseif (choice == 'H') then
+        stdout.put(nl, "You have purchased an enchilada!", nl, nl);
+    else
+        stdout.put("Error: Item '", choice, "' doesn't exist.", nl);
+    endif;
+
+end receipt;
+
+begin vending_machine;
+
+    repeat
+        main_menu();
+        mov(get_char(), choice);
+        process_choice();
+    until (choice == 'Q');
+
+end vending_machine;
